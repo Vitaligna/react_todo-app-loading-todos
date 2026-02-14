@@ -4,11 +4,16 @@ import { UserWarning } from './UserWarning';
 import { USER_ID, getTodos } from './api/todos';
 import { Todo } from './types/Todo';
 
-type Filter = 'all' | 'active' | 'completed';
+import { Header } from './components/Header';
+import { Footer } from './components/Footer';
+import { TodoList } from './components/TodoList';
+
+import { Filter } from './enums/Filter';
+import { ErrorMessage } from './enums/ErrorMessage';
 
 export const App: React.FC = () => {
   const [todos, setTodos] = useState<Todo[]>([]);
-  const [filter, setFilter] = useState<Filter>('all');
+  const [filter, setFilter] = useState<Filter>(Filter.All);
   const [error, setError] = useState('');
   const [isErrorVisible, setIsErrorVisible] = useState(false);
 
@@ -16,14 +21,10 @@ export const App: React.FC = () => {
     setError(message);
     setIsErrorVisible(true);
 
-    setTimeout(() => {
-      setIsErrorVisible(false);
-    }, 3000);
+    setTimeout(() => setIsErrorVisible(false), 3000);
   };
 
-  const hideError = () => {
-    setIsErrorVisible(false);
-  };
+  const hideError = () => setIsErrorVisible(false);
 
   useEffect(() => {
     if (!USER_ID) {
@@ -34,26 +35,26 @@ export const App: React.FC = () => {
 
     getTodos()
       .then(setTodos)
-      .catch(() => {
-        showError('Unable to load todos');
-      });
+      .catch(() => showError(ErrorMessage.Load));
   }, []);
 
   const filteredTodos = useMemo(() => {
     switch (filter) {
-      case 'active':
-        return todos.filter(todo => !todo.completed);
+      case Filter.Active:
+        return todos.filter(t => !t.completed);
 
-      case 'completed':
-        return todos.filter(todo => todo.completed);
+      case Filter.Completed:
+        return todos.filter(t => t.completed);
 
       default:
         return todos;
     }
   }, [todos, filter]);
 
-  const activeCount = todos.filter(todo => !todo.completed).length;
+  const activeCount = todos.filter(t => !t.completed).length;
   const completedCount = todos.length - activeCount;
+
+  const allCompleted = todos.length > 0 && completedCount === todos.length;
 
   if (!USER_ID) {
     return <UserWarning />;
@@ -64,116 +65,17 @@ export const App: React.FC = () => {
       <h1 className="todoapp__title">todos</h1>
 
       <div className="todoapp__content">
-        <header className="todoapp__header">
-          <button
-            type="button"
-            className={classNames('todoapp__toggle-all', {
-              active: todos.length > 0 && completedCount === todos.length,
-            })}
-            data-cy="ToggleAllButton"
+        <Header allCompleted={allCompleted} />
+
+        {todos.length > 0 && <TodoList todos={filteredTodos} />}
+
+        {todos.length > 0 && (
+          <Footer
+            activeCount={activeCount}
+            completedCount={completedCount}
+            filter={filter}
+            setFilter={setFilter}
           />
-
-          <form>
-            <input
-              data-cy="NewTodoField"
-              type="text"
-              className="todoapp__new-todo"
-              placeholder="What needs to be done?"
-            />
-          </form>
-        </header>
-
-        {todos.length > 0 && (
-          <section className="todoapp__main" data-cy="TodoList">
-            {filteredTodos.map(todo => (
-              <div
-                key={todo.id}
-                data-cy="Todo"
-                className={classNames('todo', {
-                  completed: todo.completed,
-                })}
-              >
-                <div className="todo__status-label">
-                  <input
-                    data-cy="TodoStatus"
-                    type="checkbox"
-                    className="todo__status"
-                    checked={todo.completed}
-                    readOnly
-                  />
-                </div>
-
-                <span data-cy="TodoTitle" className="todo__title">
-                  {todo.title}
-                </span>
-
-                <button
-                  type="button"
-                  className="todo__remove"
-                  data-cy="TodoDelete"
-                >
-                  ×
-                </button>
-
-                <div data-cy="TodoLoader" className="modal overlay">
-                  <div className="modal-background has-background-white-ter" />
-                  <div className="loader" />
-                </div>
-              </div>
-            ))}
-          </section>
-        )}
-
-        {todos.length > 0 && (
-          <footer className="todoapp__footer" data-cy="Footer">
-            <span className="todo-count" data-cy="TodosCounter">
-              {activeCount} items left
-            </span>
-
-            <nav className="filter" data-cy="Filter">
-              <a
-                href="#/"
-                className={classNames('filter__link', {
-                  selected: filter === 'all',
-                })}
-                data-cy="FilterLinkAll"
-                onClick={() => setFilter('all')}
-              >
-                All
-              </a>
-
-              <a
-                href="#/active"
-                className={classNames('filter__link', {
-                  selected: filter === 'active',
-                })}
-                data-cy="FilterLinkActive"
-                onClick={() => setFilter('active')}
-              >
-                Active
-              </a>
-
-              <a
-                href="#/completed"
-                className={classNames('filter__link', {
-                  selected: filter === 'completed',
-                })}
-                data-cy="FilterLinkCompleted"
-                onClick={() => setFilter('completed')}
-              >
-                Completed
-              </a>
-            </nav>
-
-            <button
-              type="button"
-              className="todoapp__clear-completed"
-              disabled={completedCount === 0}
-              data-cy="ClearCompletedButton"
-            >
-              Clear completed
-            </button>
-          </footer>
         )}
       </div>
 
